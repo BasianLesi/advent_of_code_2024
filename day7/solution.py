@@ -40,7 +40,7 @@ def check_equation(x, values):
     return True
   return recursive_check(values[0], values[1:], x)
 
-@timeit
+#@timeit
 def get_sum(data):
   sum = 0
   for row in data:
