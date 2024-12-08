@@ -12,7 +12,6 @@ direction = {
   "R": (0, 1),
 }
 
-move = ["U", "R", "D", "L"]
 
 
 def left_shift(lst):
@@ -20,70 +19,78 @@ def left_shift(lst):
         first = lst.pop(0)  
         lst.append(first)
 
-def get_map_value(map, pos, dir=(0,0)):
-  return map[pos[0] + dir[0]][pos[1] + dir[1]]
+def get_guard_pos(lab_map):
+    g_pos = np.where(lab_map == '^')
+    g_pos = g_pos[0][0], g_pos[1][0]
+    return g_pos
 
-def get_pos(pos, dir):
-  return (pos[0] + dir[0], pos[1] + dir[1])
-
-def is_out_of_bounds(lab, pos, dir=(0,0)):
-  if pos[0] + dir[0] >= lab.shape[0] or pos[1] + dir[1] >= lab.shape[1] or pos[0] + dir[0] < 0 or pos[1] + dir[1] < 0:
-     return True
-
-def check_if_loop(lab, pos, dir, move):
-  state = set()
-
-  new_lab = deepcopy(lab)
-  global o_map
-
-  if is_out_of_bounds(new_lab, pos, dir):
-      return 0
-  elif o_map[get_pos(pos, dir)] == 5 or new_lab[get_pos(pos, dir)] == 2:
-    return 0
-  else:
-    new_lab[get_pos(pos, dir)] = 2
-
-  # placed obstacle so change dir
-  new_move = deepcopy(move)
-  left_shift(new_move)
-
-  new_dir = direction[new_move[0]]
-  new_pos = (pos[0] + new_dir[0], pos[1] + new_dir[1])
-  #new_pos = pos
-
-  
-  while True:
-    if is_out_of_bounds(new_lab, new_pos) or is_out_of_bounds(new_lab, new_pos, new_dir):
-      return 0
-
-    else:
-      if get_map_value(new_lab, new_pos) != 2:
-          new_lab[new_pos[0]][new_pos[1]] = 1
-          new_state = (new_pos, new_dir) 
-          new_pos =  get_pos(new_pos, new_dir)
-          if new_state in state:
-              o_map[get_pos(pos,dir)] = 5
-              return 0
-          else:
-            state.add(new_state)
-      else:
-          # obtacle found change dir
-          left_shift(new_move)
-          new_dir = direction[new_move[0]]
-
-
-
-def is_move_legal(lab, pos, dir):
-    if lab[pos[0] + dir[0]][pos[1] + dir[1]] != 2:
-        lab[pos[0] + dir[0]][pos[1] + dir[1]] = 1
-
+def check_new_pos_in_bounds(shape, pos, dir):
+    if 0 <= pos[0] + dir[0] < shape[0] and 0 <= pos[1] + dir[1] < shape[1]:
         return True
+    else:
+        return False
 
-    return False
+def check_if_obstacle(lab_map, g_pos, dir):
+    new_pos = g_pos[0] + dir[0], g_pos[1] + dir[1]
+    if lab_map[new_pos] == '#' or lab_map[new_pos] == 'O':
+        return True
+    else:
+        return False
+
+def get_new_dir(move):
+    left_shift(move)
+    return direction[move[0]]
+
+def get_new_pos(lab_map, g_pos, dir, move):
+    obstacle = True
+    if check_new_pos_in_bounds(lab_map.shape, g_pos, dir):
+        
+        while obstacle:
+            obstacle = check_if_obstacle(lab_map, g_pos, dir)
+            if obstacle:
+                dir = get_new_dir(move)
+                obstacle = check_if_obstacle(lab_map, g_pos, dir)
+
+        new_pos = g_pos[0] + dir[0], g_pos[1] + dir[1]
+        return new_pos
+    else:
+        return None
+
+
+def move_guard(lab_map, g_pos, new_pos):
+    lab_map[g_pos] = 'X'
+    lab_map[new_pos] = '^'
+
+def play_moves(lab_map, move):
+    states = set()
+
+    while True:
+        g_pos = get_guard_pos(lab_map)
+        dir = direction[move[0]]
+        new_pos = get_new_pos(lab_map, g_pos, dir, move)
+
+
+        if new_pos is None:
+            return lab_map, 0
+        else:
+            state = (g_pos, dir)
+            if state in states:
+
+                global obstacle_counter
+                return None, 1
+            else:
+                states.add(state)
+
+            move_guard(lab_map, g_pos, new_pos)
+            g_pos = get_guard_pos(lab_map)
+
+
+
+
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-f", "--filename", type=str, default="input", help="The filename to be parsed")  
+parser.add_argument("-f", "--filename", type=str, default="sample", help="The filename to be parsed")  
 parser.add_argument("-d", "--debug", action="store_true", default=False, help="The filename to be parsed")  
 args = parser.parse_args()  
 filename = args.filename  
@@ -97,49 +104,26 @@ rows = dt.strip().split('\n')
 
 data = []
 pos = None
+answer1, answer2 = 0, 0
 
-for idx, string in enumerate(rows): 
-  row = []
-  for idy, char in enumerate(string):
-    if char == ".":
-      row.append(0)
-    elif char == "#":
-      row.append(2)
-    else:
-      row.append(1)
-      pos = (idx, idy)
+lab_map = np.array([[i for i in row] for row in rows], dtype="str")
+guard_pos = np.where(lab_map == '^')[0][0], np.where(lab_map == '^')[1][0]
+available_moves = ["U", "R", "D", "L"]
 
-  data.append(row)
+new_map ,_ = play_moves(deepcopy(lab_map), deepcopy(available_moves))
+guard_pos = np.where(new_map == '^')[0][0], np.where(new_map == '^')[1][0]
+new_map[guard_pos] = 'X'
+answer1 = new_map[new_map == "X"].shape[0]
 
-  
-lab = np.array(data)
-lab_dir = np.full(lab.shape, 'X').tolist()
-lab_dir[pos[0]][pos[1]] += 'U'
-o_map = deepcopy(lab)
+for i in range(new_map.shape[0]):
+    for j in range(new_map.shape[0]):
+        if new_map[i, j] == "X" and lab_map[i, j] != "^":
+            loop_map = deepcopy(lab_map)
+            loop_map[i, j] = "O"
+            answer2 += play_moves(loop_map, deepcopy(available_moves))[1]
 
-
-guard = True
-
-while guard:
-  dir = direction[move[0]]
-  check_if_loop(lab, pos, dir, move)
-
-  if is_out_of_bounds(lab, pos, dir):
-      guard = False
-
-  else:
-      if is_move_legal(lab, pos, dir):
-          pos =  (pos[0] + dir[0], pos[1] + dir[1])
-      else:
-          left_shift(move)
-          dir = direction[move[0]]
-
-visited1 = len(lab[lab==1])
-visited2 = len(o_map[o_map==5])
-
-print(cnt)
 
 
 print("\n============ DAY 6 ============")
-for i, answer in enumerate([visited1, visited2]):
+for i, answer in enumerate([answer1, answer2]):
   print(f"part {i+1}: {answer}")

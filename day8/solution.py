@@ -118,8 +118,10 @@ rows = dt.strip().split('\n')
 data = np.array([[cell for cell in row] for row in rows])
 
 antinodes_matrix = np.full(data.shape, '.', dtype=str)
+antinodes_matrix_harmonic = np.full(data.shape, '.', dtype=str)
 ant_dict = {}
-antennas = []
+antennas_harmonic = []
+antennas_non_harmonic = []
 
 uc = np.unique(data)
 unique_chars = uc[uc != '.']
@@ -129,15 +131,19 @@ for i in unique_chars:
     pos = np.where(data == i)
     x = pos[0]
     y = pos[1]
-    ant_dict[i] = Fz(i, x, y, map_shape)
-    antennas.append(Fz(i, x, y, map_shape))
+    antennas_non_harmonic.append(Fz(i, x, y))
+    antennas_harmonic.append(Fz(i, x, y, map_shape))
 
-for fz in antennas:
-    add_antinodes(fz, antinodes_matrix)
+
+for non_harmonic, harmonic  in zip(antennas_non_harmonic, antennas_harmonic):
+    add_antinodes(non_harmonic, antinodes_matrix)
+    add_antinodes(harmonic, antinodes_matrix_harmonic)
+
 
 sum1 = antinodes_matrix[antinodes_matrix == "#"].shape[0]
+sum2 = antinodes_matrix_harmonic[antinodes_matrix_harmonic == "#"].shape[0]
 
 
-print("\n============== DAY 8 ==============")
+print("\n================ DAY 8 ================")
 for i, answer in enumerate([sum1, sum2]):
   print(f"part {i+1}: {answer}")
