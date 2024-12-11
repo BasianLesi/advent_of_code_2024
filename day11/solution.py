@@ -41,5 +41,3 @@ for row in rows:
 print("\n================ DAY 10 ================")
 for i, answer in enumerate([sum1, sum2]):
   print(f"part {i+1}: {answer}")
-
-import pdb; pdb.set_trace()
